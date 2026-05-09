@@ -83,6 +83,10 @@ Create a `requirements.txt` file with:
 ```txt
 Django>=5.0
 python
+cryptography
+opencv-contrib-python
+ pillow
+ pymysql
 ```
 
 ---
