@@ -1,14 +1,14 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
+
 import os
 import cv2
 import base64
 import numpy as np
 from PIL import Image
 
-# Globals
-global username, password, contact, gender, email, address, finger
+# ================= GLOBAL VARIABLES ================= #
 
 username = ""
 password = ""
@@ -18,15 +18,18 @@ email = ""
 address = ""
 finger = ""
 
-# Load Haar cascade safely
+# ================= LOAD FACE DETECTOR ================= #
+
 cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+
 face_detection = cv2.CascadeClassifier(cascade_path)
 
-# LBPH recognizer
-recognizer = cv2.face.LBPHFaceRecognizer_create()
+# IMPORTANT:
+# Do NOT initialize recognizer globally on Vercel
+recognizer = None
 
 
-# ---------------- HOME PAGES ---------------- #
+# ================= HOME PAGES ================= #
 
 def index(request):
     return render(request, 'index.html')
@@ -48,25 +51,41 @@ def ValidateFace(request):
     return render(request, 'ValidateFace.html')
 
 
-# ---------------- FILE DOWNLOAD ---------------- #
+# ================= FILE DOWNLOAD ================= #
 
 def DownloadFileAction(request):
+
     img = request.GET.get('fname')
 
-    filepath = os.path.join("SecureBiometricApp/static/files", img)
+    if not img:
+        return HttpResponse("No filename provided")
+
+    filepath = os.path.join(
+        "SecureBiometricApp/static/files",
+        img
+    )
 
     if os.path.exists(filepath):
+
         with open(filepath, 'rb') as infile:
             data = infile.read()
 
-        response = HttpResponse(data, content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{img}"'
+        response = HttpResponse(
+            data,
+            content_type='application/octet-stream'
+        )
+
+        response[
+            'Content-Disposition'
+        ] = f'attachment; filename="{img}"'
+
         return response
 
     return HttpResponse("File not found")
 
 
 def Download(request):
+
     output = """
     <table border="1" align="center" width="100%">
     <tr>
@@ -77,48 +96,66 @@ def Download(request):
 
     folder = "SecureBiometricApp/static/files"
 
-    if os.path.exists(folder):
-        for file in os.listdir(folder):
-            output += f"""
-            <tr>
-            <td>{file}</td>
-            <td>
-            <a href='/DownloadFileAction?fname={file}'>
-            Download
-            </a>
-            </td>
-            </tr>
-            """
+    os.makedirs(folder, exist_ok=True)
+
+    for file in os.listdir(folder):
+
+        output += f"""
+        <tr>
+        <td>{file}</td>
+        <td>
+        <a href='/DownloadFileAction?fname={file}'>
+        Download
+        </a>
+        </td>
+        </tr>
+        """
 
     output += "</table>"
 
     context = {'data': output}
+
     return render(request, "Download.html", context)
 
 
-# ---------------- FILE UPLOAD ---------------- #
+# ================= FILE UPLOAD ================= #
 
 def UploadAction(request):
+
     if request.method == 'POST':
 
-        file = request.FILES['t1']
-        filename = file.name
+        try:
 
-        save_path = 'SecureBiometricApp/static/files/'
+            file = request.FILES['t1']
 
-        os.makedirs(save_path, exist_ok=True)
+            filename = file.name
 
-        fs = FileSystemStorage(location=save_path)
-        fs.save(filename, file)
+            save_path = 'SecureBiometricApp/static/files/'
 
-        context = {
-            'data': f'{filename} uploaded successfully'
-        }
+            os.makedirs(save_path, exist_ok=True)
 
-        return render(request, 'Upload.html', context)
+            fs = FileSystemStorage(location=save_path)
+
+            fs.save(filename, file)
+
+            context = {
+                'data': f'{filename} uploaded successfully'
+            }
+
+            return render(request, 'Upload.html', context)
+
+        except Exception as e:
+
+            context = {
+                'data': 'Upload Error: ' + str(e)
+            }
+
+            return render(request, 'Upload.html', context)
+
+    return render(request, 'Upload.html')
 
 
-# ---------------- FACE IMAGE HELPERS ---------------- #
+# ================= FACE IMAGE HELPERS ================= #
 
 def getUserImages():
 
@@ -128,8 +165,7 @@ def getUserImages():
 
     dataset = "SecureBiometricApp/static/profile"
 
-    if not os.path.exists(dataset):
-        return names, ids, faces
+    os.makedirs(dataset, exist_ok=True)
 
     count = 0
 
@@ -137,21 +173,26 @@ def getUserImages():
 
         for file in files:
 
-            path = os.path.join(root, file)
+            try:
 
-            pilImage = Image.open(path).convert('L')
+                path = os.path.join(root, file)
 
-            imageNp = np.array(pilImage, 'uint8')
+                pilImage = Image.open(path).convert('L')
 
-            name = os.path.splitext(file)[0]
+                imageNp = np.array(pilImage, 'uint8')
 
-            names.append(name)
+                name = os.path.splitext(file)[0]
 
-            faces.append(imageNp)
+                names.append(name)
 
-            ids.append(count)
+                faces.append(imageNp)
 
-            count += 1
+                ids.append(count)
+
+                count += 1
+
+            except:
+                pass
 
     return names, ids, faces
 
@@ -159,68 +200,104 @@ def getUserImages():
 def getName(predict, ids, names):
 
     for i in range(len(ids)):
+
         if ids[i] == predict:
             return names[i]
 
     return "Unknown"
 
 
-# ---------------- FACE VALIDATION ---------------- #
+# ================= FACE VALIDATION ================= #
 
 def ValidateFaceAction(request):
 
     global username
 
-    img_path = 'SecureBiometricApp/static/photo/test.png'
+    try:
 
-    if not os.path.exists(img_path):
-        context = {'data': 'Test image not found'}
-        return render(request, 'ValidateFace.html', context)
+        img_path = 'SecureBiometricApp/static/photo/test.png'
 
-    img = cv2.imread(img_path)
+        if not os.path.exists(img_path):
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            context = {
+                'data': 'Test image not found'
+            }
 
-    detected_faces = face_detection.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5
-    )
+            return render(request, 'ValidateFace.html', context)
 
-    if len(detected_faces) == 0:
-        context = {'data': 'Face not detected'}
-        return render(request, 'ValidateFace.html', context)
+        img = cv2.imread(img_path)
 
-    (x, y, w, h) = detected_faces[0]
+        if img is None:
 
-    face_component = gray[y:y+h, x:x+w]
+            context = {
+                'data': 'Unable to read image'
+            }
 
-    names, ids, faces = getUserImages()
+            return render(request, 'ValidateFace.html', context)
 
-    if len(faces) == 0:
-        context = {'data': 'No trained faces found'}
-        return render(request, 'ValidateFace.html', context)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    recognizer.train(faces, np.asarray(ids))
+        detected_faces = face_detection.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5
+        )
 
-    predict, conf = recognizer.predict(face_component)
+        if len(detected_faces) == 0:
 
-    validate_user = getName(predict, ids, names)
+            context = {
+                'data': 'Face not detected'
+            }
 
-    if conf < 80 and validate_user == username:
+            return render(request, 'ValidateFace.html', context)
+
+        (x, y, w, h) = detected_faces[0]
+
+        face_component = gray[y:y+h, x:x+w]
+
+        names, ids, faces = getUserImages()
+
+        if len(faces) == 0:
+
+            context = {
+                'data': 'No trained faces found'
+            }
+
+            return render(request, 'ValidateFace.html', context)
+
+        # SAFE INITIALIZATION
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+
+        recognizer.train(faces, np.asarray(ids))
+
+        predict, conf = recognizer.predict(face_component)
+
+        validate_user = getName(predict, ids, names)
+
+        if conf < 80 and validate_user == username:
+
+            context = {
+                'data': f'Welcome {username}, face matched successfully'
+            }
+
+            return render(request, 'UserScreen.html', context)
 
         context = {
-            'data': f'Welcome {username}, face matched successfully'
+            'data': 'Face validation failed'
         }
 
-        return render(request, 'UserScreen.html', context)
+        return render(request, 'ValidateFace.html', context)
 
-    context = {'data': 'Face validation failed'}
+    except Exception as e:
 
-    return render(request, 'ValidateFace.html', context)
+        context = {
+            'data': 'Face Recognition Error: ' + str(e)
+        }
+
+        return render(request, 'ValidateFace.html', context)
 
 
-# ---------------- LOGIN ---------------- #
+# ================= LOGIN ================= #
 
 def UserLoginAction(request):
 
@@ -231,7 +308,7 @@ def UserLoginAction(request):
         username = request.POST.get('t1')
         password = request.POST.get('t2')
 
-        # Temporary demo validation
+        # Demo login
         if username == "admin" and password == "admin":
 
             context = {
@@ -248,13 +325,20 @@ def UserLoginAction(request):
 
             return render(request, 'UserLogin.html', context)
 
+    return render(request, 'UserLogin.html')
 
-# ---------------- SIGNUP ---------------- #
+
+# ================= SIGNUP ================= #
 
 def SignupAction(request):
 
-    global username, password
-    global contact, gender, email, address, finger
+    global username
+    global password
+    global contact
+    global gender
+    global email
+    global address
+    global finger
 
     if request.method == 'POST':
 
@@ -272,75 +356,112 @@ def SignupAction(request):
 
         return render(request, 'CaptureFace.html', context)
 
+    return render(request, 'Signup.html')
 
-# ---------------- WEBCAM SAVE ---------------- #
+
+# ================= WEBCAM SAVE ================= #
 
 def WebCam(request):
 
-    data = str(request)
+    try:
 
-    if ';base64,' not in data:
-        return HttpResponse("Invalid image")
+        data = str(request.body)
 
-    formats, imgstr = data.split(';base64,')
+        if ';base64,' not in data:
+            return HttpResponse("Invalid image")
 
-    imgstr = imgstr[:-2]
+        formats, imgstr = data.split(';base64,')
 
-    image_data = base64.b64decode(imgstr)
+        imgstr = imgstr[:-1]
 
-    save_dir = "SecureBiometricApp/static/photo"
+        image_data = base64.b64decode(imgstr)
 
-    os.makedirs(save_dir, exist_ok=True)
+        save_dir = "SecureBiometricApp/static/photo"
 
-    save_path = os.path.join(save_dir, "test.png")
+        os.makedirs(save_dir, exist_ok=True)
 
-    with open(save_path, 'wb') as f:
-        f.write(image_data)
+        save_path = os.path.join(save_dir, "test.png")
 
-    return HttpResponse("Image saved")
+        with open(save_path, 'wb') as f:
+            f.write(image_data)
+
+        return HttpResponse("Image saved")
+
+    except Exception as e:
+
+        return HttpResponse("Webcam Error: " + str(e))
 
 
-# ---------------- FACE CAPTURE ---------------- #
+# ================= FACE CAPTURE ================= #
 
 def CaptureFaceAction(request):
 
     global username
 
-    img_path = 'SecureBiometricApp/static/photo/test.png'
+    try:
 
-    if not os.path.exists(img_path):
+        img_path = 'SecureBiometricApp/static/photo/test.png'
 
-        context = {'data': 'Test image not found'}
+        if not os.path.exists(img_path):
+
+            context = {
+                'data': 'Test image not found'
+            }
+
+            return render(request, 'CaptureFace.html', context)
+
+        img = cv2.imread(img_path)
+
+        if img is None:
+
+            context = {
+                'data': 'Unable to read image'
+            }
+
+            return render(request, 'CaptureFace.html', context)
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        detected_faces = face_detection.detectMultiScale(
+            gray,
+            1.3,
+            5
+        )
+
+        if len(detected_faces) == 0:
+
+            context = {
+                'data': 'Unable to detect face'
+            }
+
+            return render(request, 'CaptureFace.html', context)
+
+        (x, y, w, h) = detected_faces[0]
+
+        face_component = img[y:y+h, x:x+w]
+
+        profile_dir = 'SecureBiometricApp/static/profile'
+
+        os.makedirs(profile_dir, exist_ok=True)
+
+        save_path = os.path.join(
+            profile_dir,
+            username + '.png'
+        )
+
+        cv2.imwrite(save_path, face_component)
+
+        context = {
+            'data': 'Signup process completed successfully'
+        }
+
+        return render(request, 'Signup.html', context)
+
+    except Exception as e:
+
+        context = {
+            'data': 'Capture Face Error: ' + str(e)
+        }
 
         return render(request, 'CaptureFace.html', context)
-
-    img = cv2.imread(img_path)
-
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    detected_faces = face_detection.detectMultiScale(gray, 1.3, 5)
-
-    if len(detected_faces) == 0:
-
-        context = {'data': 'Unable to detect face'}
-
-        return render(request, 'CaptureFace.html', context)
-
-    (x, y, w, h) = detected_faces[0]
-
-    face_component = img[y:y+h, x:x+w]
-
-    profile_dir = 'SecureBiometricApp/static/profile'
-
-    os.makedirs(profile_dir, exist_ok=True)
-
-    save_path = os.path.join(profile_dir, username + '.png')
-
-    cv2.imwrite(save_path, face_component)
-
-    context = {
-        'data': 'Signup process completed successfully'
-    }
-
-    return render(request, 'Signup.html', context) 
 
