@@ -81,14 +81,10 @@ pip install -r requirements.txt
 Create a `requirements.txt` file with:
 
 ```txt
-Django>=5.0
-python
+Django==4.2.16
 gunicorn
 whitenoise
-cryptography
-opencv-contrib-python
- pillow
- pymysql
+pymysql
 ```
 
 ---
