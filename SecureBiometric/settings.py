@@ -1,22 +1,17 @@
-"""
-Django settings for SecureBiometric project.
-"""
-
 import os
 
-# ================= BASE DIRECTORY ================= #
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# ================= SECURITY ================= #
-
-SECRET_KEY = '1x-q80%c3d&(gvgb)x+48$kfi%$3a&-phku9++z@m9nyghco%q'
+SECRET_KEY = 'django-secret-key'
 
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-# ================= INSTALLED APPS ================= #
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -29,13 +24,10 @@ INSTALLED_APPS = [
     'SecureBiometricApp',
 ]
 
-# ================= MIDDLEWARE ================= #
 
 MIDDLEWARE = [
-
     'django.middleware.security.SecurityMiddleware',
 
-    # WhiteNoise
     'whitenoise.middleware.WhiteNoiseMiddleware',
 
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -46,11 +38,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# ================= URLS ================= #
 
 ROOT_URLCONF = 'SecureBiometric.urls'
 
-# ================= TEMPLATES ================= #
 
 TEMPLATES = [
     {
@@ -68,24 +58,18 @@ TEMPLATES = [
 
         'OPTIONS': {
             'context_processors': [
-
                 'django.template.context_processors.debug',
-
                 'django.template.context_processors.request',
-
                 'django.contrib.auth.context_processors.auth',
-
                 'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
 
-# ================= WSGI ================= #
 
 WSGI_APPLICATION = 'SecureBiometric.wsgi.application'
 
-# ================= DATABASE ================= #
 
 DATABASES = {
     'default': {
@@ -98,27 +82,9 @@ DATABASES = {
     }
 }
 
-# ================= PASSWORD VALIDATION ================= #
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
+AUTH_PASSWORD_VALIDATORS = []
 
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-# ================= LANGUAGE ================= #
 
 LANGUAGE_CODE = 'en-us'
 
@@ -128,7 +94,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-# ================= STATIC FILES ================= #
 
 STATIC_URL = '/static/'
 
@@ -142,13 +107,13 @@ STATICFILES_DIRS = [
         BASE_DIR,
         'SecureBiometricApp',
         'static'
-    ),
+    )
 ]
+
 
 STATICFILES_STORAGE = (
     'whitenoise.storage.CompressedManifestStaticFilesStorage'
 )
 
-# ================= DEFAULT AUTO FIELD ================= #
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

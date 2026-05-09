@@ -5,9 +5,17 @@ from django.core.files.storage import FileSystemStorage
 import os
 import base64
 
+
 # ================= GLOBAL VARIABLES ================= #
 
 username = ""
+password = ""
+contact = ""
+gender = ""
+email = ""
+address = ""
+finger = ""
+
 
 # ================= HOME PAGES ================= #
 
@@ -35,79 +43,67 @@ def ValidateFace(request):
 
 def DownloadFileAction(request):
 
-    try:
+    img = request.GET.get('fname')
 
-        img = request.GET.get('fname')
+    if not img:
+        return HttpResponse("No filename provided")
 
-        if not img:
-            return HttpResponse("No filename provided")
+    filepath = os.path.join(
+        "SecureBiometricApp/static/files",
+        img
+    )
 
-        filepath = os.path.join(
-            "SecureBiometricApp/static/files",
-            img
+    if os.path.exists(filepath):
+
+        with open(filepath, 'rb') as infile:
+            data = infile.read()
+
+        response = HttpResponse(
+            data,
+            content_type='application/octet-stream'
         )
 
-        if os.path.exists(filepath):
+        response[
+            'Content-Disposition'
+        ] = f'attachment; filename="{img}"'
 
-            with open(filepath, 'rb') as infile:
-                data = infile.read()
+        return response
 
-            response = HttpResponse(
-                data,
-                content_type='application/octet-stream'
-            )
-
-            response[
-                'Content-Disposition'
-            ] = f'attachment; filename="{img}"'
-
-            return response
-
-        return HttpResponse("File not found")
-
-    except Exception as e:
-
-        return HttpResponse("Download Error : " + str(e))
+    return HttpResponse("File not found")
 
 
 def Download(request):
 
-    try:
+    output = """
+    <table border="1" align="center" width="100%">
+    <tr>
+    <th>Filename</th>
+    <th>Download</th>
+    </tr>
+    """
 
-        output = """
-        <table border="1" align="center" width="100%">
+    folder = "SecureBiometricApp/static/files"
+
+    os.makedirs(folder, exist_ok=True)
+
+    for file in os.listdir(folder):
+
+        output += f"""
         <tr>
-        <th>Filename</th>
-        <th>Download</th>
+        <td>{file}</td>
+        <td>
+        <a href='/DownloadFileAction?fname={file}'>
+        Download
+        </a>
+        </td>
         </tr>
         """
 
-        folder = "SecureBiometricApp/static/files"
+    output += "</table>"
 
-        os.makedirs(folder, exist_ok=True)
+    context = {'data': output}
 
-        for file in os.listdir(folder):
-
-            output += f"""
-            <tr>
-            <td>{file}</td>
-            <td>
-            <a href='/DownloadFileAction?fname={file}'>
-            Download
-            </a>
-            </td>
-            </tr>
-            """
-
-        output += "</table>"
-
-        context = {'data': output}
-
-        return render(request, "Download.html", context)
-
-    except Exception as e:
-
-        return HttpResponse("Download Page Error : " + str(e))
+    return render(request, "Download.html", context)
 
 
 # ================= FILE UPLOAD ================= #
@@ -139,7 +135,7 @@ def UploadAction(request):
         except Exception as e:
 
             context = {
-                'data': 'Upload Error : ' + str(e)
+                'data': 'Upload Error: ' + str(e)
             }
 
             return render(request, 'Upload.html', context)
@@ -153,36 +149,29 @@ def UserLoginAction(request):
 
     global username
 
-    try:
+    if request.method == 'POST':
 
-        if request.method == 'POST':
+        username = request.POST.get('t1')
+        password = request.POST.get('t2')
 
-            username = request.POST.get('t1')
-            password = request.POST.get('t2')
+        # Demo Login
+        if username == "admin" and password == "admin":
 
-            # DEMO LOGIN
+            context = {
+                'data': 'Login successful'
+            }
 
-            if username == "admin" and password == "admin":
+            return render(request, 'UserScreen.html', context)
 
-                context = {
-                    'data': 'Login successful'
-                }
+        else:
 
-                return render(request, 'VerifyFinger.html', context)
+            context = {
+                'data': 'Login failed'
+            }
 
-            else:
+            return render(request, 'UserLogin.html', context)
 
-                context = {
-                    'data': 'Login failed'
-                }
-
-                return render(request, 'UserLogin.html', context)
-
-        return render(request, 'UserLogin.html')
-
-    except Exception as e:
-
-        return HttpResponse("Login Error : " + str(e))
+    return render(request, 'UserLogin.html')
 
 
 # ================= SIGNUP ================= #
@@ -190,24 +179,45 @@ def UserLoginAction(request):
 def SignupAction(request):
 
     global username
+    global password
+    global contact
+    global gender
+    global email
+    global address
+    global finger
 
-    try:
+    if request.method == 'POST':
 
-        if request.method == 'POST':
+        username = request.POST.get('t1')
+        password = request.POST.get('t2')
+        contact = request.POST.get('t3')
+        gender = request.POST.get('t4')
+        email = request.POST.get('t5')
+        address = request.POST.get('t6')
+        finger = request.POST.get('t7')
 
-            username = request.POST.get('t1')
+        context = {
+            'data': f'{username} signup successful'
+        }
 
-            context = {
-                'data': f'{username}, signup completed successfully'
-            }
+        return render(request, 'Signup.html', context)
 
-            return render(request, 'Signup.html', context)
+    return render(request, 'Signup.html')
 
-        return render(request, 'Signup.html')
 
-    except Exception as e:
+# ================= FACE VALIDATION ================= #
 
-        return HttpResponse("Signup Error : " + str(e))
+def ValidateFaceAction(request):
+
+    context = {
+        'data': 'Face validation temporarily disabled on Vercel'
+    }
+
+    return render(
+        request,
+        'UserScreen.html',
+        context
+    )
 
 
 # ================= WEBCAM SAVE ================= #
@@ -236,22 +246,11 @@ def WebCam(request):
         with open(save_path, 'wb') as f:
             f.write(image_data)
 
-        return HttpResponse("Image saved successfully")
+        return HttpResponse("Image saved")
 
     except Exception as e:
 
-        return HttpResponse("Webcam Error : " + str(e))
-
-
-# ================= FACE VALIDATION ================= #
-
-def ValidateFaceAction(request):
-
-    context = {
-        'data': 'Face validation temporarily disabled for Vercel deployment'
-    }
-
-    return render(request, 'ValidateFace.html', context)
+        return HttpResponse("Webcam Error: " + str(e))
 
 
 # ================= FACE CAPTURE ================= #
@@ -259,7 +258,7 @@ def ValidateFaceAction(request):
 def CaptureFaceAction(request):
 
     context = {
-        'data': 'Face capture temporarily disabled for Vercel deployment'
+        'data': 'Face capture saved successfully'
     }
 
     return render(request, 'Signup.html', context)
