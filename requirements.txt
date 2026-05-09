@@ -4,3 +4,4 @@ whitenoise
 opencv-python-headless
 numpy
 Pillow
+PyMySQL
