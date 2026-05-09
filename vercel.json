@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "src": "biometric_project/wsgi.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "biometric_project/wsgi.py"
+    }
+  ]
+}
