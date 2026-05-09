@@ -1,9 +1,4 @@
-
-Django
+Django==4.2.16
 gunicorn
 whitenoise
 pymysql
-cryptography
-opencv-contrib-python
- pillow
- pymysql
