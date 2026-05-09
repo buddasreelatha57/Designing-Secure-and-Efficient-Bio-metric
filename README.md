@@ -112,16 +112,17 @@ http://127.0.0.1:8000/
 
 ```json
 {
+  "version": 2,
   "builds": [
     {
-      "src": "biometric_project/wsgi.py",
+      "src": "SecureBiometric/wsgi.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "biometric_project/wsgi.py"
+      "dest": "SecureBiometric/wsgi.py"
     }
   ]
 }
