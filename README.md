@@ -83,6 +83,8 @@ Create a `requirements.txt` file with:
 ```txt
 Django>=5.0
 python
+gunicorn
+whitenoise
 cryptography
 opencv-contrib-python
  pillow
@@ -196,6 +198,7 @@ Then redeploy the project on Vercel.
 - Python
 - Django
 - Vercel
+- whitenoise
 - HTML/CSS/JavaScript
 
 ---
